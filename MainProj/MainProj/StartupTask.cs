@@ -16,6 +16,12 @@ namespace MainProj
 {
     public sealed class StartupTask : IBackgroundTask
     {
+        // State machine variables to control different mode of operation
+        const int MODE_NORMAL = 1;
+        const int MODE_ENTERING = 2;
+        const int MODE_EXITING = 3;
+        static int curMode; // stores current mode program is at
+
         // =====FOR RFID=====
         //private static SerialComms uartComms;
         //private static string strRfidDetected = ""; //used to check for RFID
@@ -77,6 +83,9 @@ namespace MainProj
             sm.Release();
             return value;
         }
+
+
+        int adcValue; //creating variable
         // =====END OF LIGHT SENSOR=====
 
         // for Data Comms
@@ -115,7 +124,86 @@ namespace MainProj
         }
 
 
+        private void handleModeNormal()
+        {
+            if (sensorDistance < 110)
+            {
+                //check if dist. sensor value goes back to normal values
+                Sleep(300);
+                int checkDistance = getDistance();
+                if (checkDistance >= 110)
+                {
+                    // move to MODE_Entering
+                    curMode = MODE_ENTERING;
+                    Debug.WriteLine("===Entering MODE_ENTERING===");
+                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor1");
+                }               
+            }
+            else if (adcValue < 50)
+            {
+                //check if light sensor value goes back to normal values
+                Sleep(300);
+                int checkAdcValue = GetLightValue(lightPin);
+                if (checkAdcValue >= 100)
+                {
+                    //move to MODE_Exiting
+                    curMode = MODE_EXITING;
+                    Debug.WriteLine("===Entering MODE_EXITING===");
+                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+                }
+            }
+        }
 
+        private void handleModeEntering()
+        {
+            //string startTime = DateTime.Now.ToString("ss");
+            adcValue = GetLightValue(lightPin);
+            if (adcValue < 50)
+            {
+                Sleep(300);
+                int checkAdcValue = GetLightValue(lightPin);
+                if (checkAdcValue > 150)
+                {
+                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+                    string direction = "In";
+                    sendDataToWindows("DIRECTION=" + direction);
+                    Debug.WriteLine("Someone entered");
+
+                    curMode = MODE_NORMAL;
+                    Debug.WriteLine("===Back to MODE_Normal===");
+                }
+                else
+                {
+                    // this part not confirmed yet
+                    curMode = MODE_NORMAL;
+                    Debug.WriteLine("===Enter cancelled, back to MODE_Normal===");
+                }
+            }
+
+        }
+
+
+        private void handleModeExiting()
+        {
+            sensorDistance = getDistance();
+            if (sensorDistance < 110)
+            {
+                //check if dist. sensor value goes back to normal values
+                Sleep(300);
+                int checkDistance = getDistance();
+                if (checkDistance >= 110)
+                {
+                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor1");
+                    string direction = "Out";
+                    sendDataToWindows("DIRECTION=" + direction);
+                    Debug.WriteLine("Someone left");
+
+                    curMode = MODE_NORMAL;
+                    Debug.WriteLine("===Back to MODE_Normal===");
+                }
+            }
+
+        }
 
 
         public void Run(IBackgroundTaskInstance taskInstance)
@@ -132,14 +220,43 @@ namespace MainProj
 
             //Must call this to init the Serial Comm before you can use it
             //StartUart();
-            int adcValue1 = 0;
-            int adcValue2 = 0;
+
             string direction = "";
+
+            //Init mode
+            curMode = MODE_NORMAL;
+            Debug.WriteLine("===Entering Mode_Normal===");
 
             while (true)
             {
                 //Sleep(200);
 
+                // =====FOR DISTANCE SENSOR=====
+                Sleep(300);
+                sensorDistance = getDistance();
+                adcValue = GetLightValue(lightPin);
+                Debug.WriteLine("Sensor distance = " + sensorDistance);
+                Debug.WriteLine("ADC value = " + adcValue);
+                Debug.WriteLine("Current mode = " + Convert.ToString(curMode));
+
+                //state machine
+                if (curMode == MODE_NORMAL)
+                    handleModeNormal();
+                else if (curMode == MODE_ENTERING)
+                    handleModeEntering();
+                else if (curMode == MODE_EXITING)
+                    handleModeExiting();
+                else
+                    Debug.WriteLine("Error: Invalid mode, check logic");
+            
+                // =====END OF DISTANCE SENSOR=====
+
+
+                // =====FOR LIGHT SENSOR(2nd Distance Sensor)=====
+                //Sleep(300);
+                //adcValue1 = GetLightValue(lightPin);
+                //Debug.WriteLine("Light ADC = " + adcValue);
+                // =====END OF LIGHT SENSOR=====
 
                 // =====FOR RFID=====
                 //if (!strRfidDetected.Equals(""))  // this is true for any card detected
@@ -153,56 +270,6 @@ namespace MainProj
                 ////Important: Must always clear after you've processed the data
                 //strRfidDetected = "";
                 // =====END OF RFID=====
-
-
-                // =====FOR DISTANCE SENSOR=====
-                Sleep(700);
-                sensorDistance = getDistance();
-                adcValue1 = GetLightValue(lightPin);
-                Debug.WriteLine("Sensor distance = " + sensorDistance);
-                Debug.WriteLine("ADC1 = " + adcValue1);
-                if (sensorDistance < 110)
-                {
-                    Sleep(400);
-                    // check light sensor to confirm if someone entered the arcade
-                    adcValue2 = GetLightValue(lightPin);
-                    // Debug.WriteLine("Light ADC = " + adcValue);
-                    if (adcValue1 - adcValue2 >= 100)  // set difference threshold to 10 so that it will not trigger unnecessarily
-                    {                     
-                        direction = "In";
-                        sendDataToWindows("DIRECTION=" + direction);
-                        Debug.WriteLine("Someone entered");
-                        continue;
-                    }
-                }
-                else
-                {
-                    Sleep(700);
-                    adcValue2 = GetLightValue(lightPin);
-                    Debug.WriteLine("ADC2 = " + adcValue2);
-                    if (adcValue1 - adcValue2 >= 100)
-                    {
-                        //check distance sensor to confirm if someone exit the arcade
-                        Sleep(300);
-                        sensorDistance = getDistance();
-                        
-                        if (sensorDistance < 110)
-                        {
-                            direction = "Out";
-                            sendDataToWindows("DIRECTION=" + direction);
-                            Debug.WriteLine("Someone left");
-                            continue;
-                        }
-                    }
-                }
-                // =====END OF DISTANCE SENSOR=====
-
-
-                // =====FOR LIGHT SENSOR(2nd Distance Sensor)=====
-                //Sleep(300);
-                //adcValue1 = GetLightValue(lightPin);
-                //Debug.WriteLine("Light ADC = " + adcValue);
-                // =====END OF LIGHT SENSOR=====
 
             }
         }
