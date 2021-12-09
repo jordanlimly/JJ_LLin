@@ -21,10 +21,13 @@ namespace MainProj
         const int MODE_ENTERING = 2;
         const int MODE_EXITING = 3;
         static int curMode; // stores current mode program is at
+        const int RFIDMODE_NORMAL = 4;
+        const int RFIDMODE_STARTGAME = 5;
+        static int rfidMode;
 
         // =====FOR RFID=====
-        //private static SerialComms uartComms;
-        //private static string strRfidDetected = ""; //used to check for RFID
+        private static SerialComms uartComms;
+        private static string strRfidDetected = ""; //used to check for RFID
 
         private void Sleep(int NoOfMs)
         {
@@ -32,19 +35,19 @@ namespace MainProj
         }
 
         //this method is automatically called when there is card detected
-        //static void UartDataHandler(object sender, SerialComms.UartEventArgs e)
-        //{
-        //    //strRfidDetected can be used anywhere in the program to check for card detected
-        //    strRfidDetected = e.data;
-        //    Debug.WriteLine("Card detected: " + strRfidDetected);
-        //}
+        static void UartDataHandler(object sender, SerialComms.UartEventArgs e)
+        {
+            //strRfidDetected can be used anywhere in the program to check for card detected
+            strRfidDetected = e.data;
+            Debug.WriteLine("Card detected: " + strRfidDetected);
+        }
 
         ////Must call this to initialise the Serial Comms
-        //private void StartUart()
-        //{
-        //    uartComms = new SerialComms();
-        //    uartComms.UartEvent += new SerialComms.UartEventDelegate(UartDataHandler);
-        //}
+        private void StartUart()
+        {
+            uartComms = new SerialComms();
+            uartComms.UartEvent += new SerialComms.UartEventDelegate(UartDataHandler);
+        }
 
         // =====END OF RFID=====
 
@@ -172,12 +175,12 @@ namespace MainProj
                     curMode = MODE_NORMAL;
                     Debug.WriteLine("===Back to MODE_Normal===");
                 }
-                else
-                {
-                    // this part not confirmed yet
-                    curMode = MODE_NORMAL;
-                    Debug.WriteLine("===Enter cancelled, back to MODE_Normal===");
-                }
+                //else
+                //{
+                //    // this part not confirmed yet
+                //    curMode = MODE_NORMAL;
+                //    Debug.WriteLine("===Enter cancelled, back to MODE_Normal===");
+                //}
             }
 
         }
@@ -205,6 +208,30 @@ namespace MainProj
 
         }
 
+        // creating variable
+        string detectedRFID;
+
+        private void handleRfidModeNormal()
+        {
+            if (!strRfidDetected.Equals(""))  // this is true for any card detected      **6A003E1A3E70
+            {
+                detectedRFID = strRfidDetected;
+                rfidMode = RFIDMODE_STARTGAME;
+                Debug.WriteLine("===Entering Game mode===");
+            }
+
+            ////Important: Must always clear after you've processed the data
+            strRfidDetected = "";
+        }
+
+        private void handleRfidModeStartGame()
+        {
+            Debug.WriteLine("rfid scanned is" + detectedRFID);
+            sendDataToWindows("RFIDGAMESTART=" + detectedRFID);
+
+            rfidMode = RFIDMODE_NORMAL;
+            Debug.WriteLine("===Back to RFIDMODE_Normal===");
+        }
 
         public void Run(IBackgroundTaskInstance taskInstance)
         {
@@ -219,13 +246,15 @@ namespace MainProj
             initComms(); // Must start before data transfer can work
 
             //Must call this to init the Serial Comm before you can use it
-            //StartUart();
+            StartUart();
 
             string direction = "";
 
             //Init mode
             curMode = MODE_NORMAL;
             Debug.WriteLine("===Entering Mode_Normal===");
+            rfidMode = RFIDMODE_NORMAL;
+            Debug.WriteLine("===Entering RFIDMODE_NORMAL===");
 
             while (true)
             {
@@ -248,7 +277,7 @@ namespace MainProj
                     handleModeExiting();
                 else
                     Debug.WriteLine("Error: Invalid mode, check logic");
-            
+
                 // =====END OF DISTANCE SENSOR=====
 
 
@@ -259,16 +288,14 @@ namespace MainProj
                 // =====END OF LIGHT SENSOR=====
 
                 // =====FOR RFID=====
-                //if (!strRfidDetected.Equals(""))  // this is true for any card detected
-                //{
-                //    if (strRfidDetected.Equals(""))  // check for specific card
-                //    {
-                //        Debug.WriteLine("its working");
-                //    }
-                //}
+                if (rfidMode == RFIDMODE_NORMAL)
+                    handleRfidModeNormal();
+                else if (rfidMode == RFIDMODE_STARTGAME)
+                    handleRfidModeStartGame();
+                else
+                    Debug.WriteLine("Error: Invalid mode, check logic");
 
-                ////Important: Must always clear after you've processed the data
-                //strRfidDetected = "";
+                
                 // =====END OF RFID=====
 
             }
