@@ -213,7 +213,7 @@ namespace MainProj
 
         private void handleRfidModeNormal()
         {
-            if (!strRfidDetected.Equals(""))  // this is true for any card detected      **6A003E1A3E70
+            if (!strRfidDetected.Equals(""))  // this is true for any card detected      **6A003E1A3E70  **6A003E6199AC
             {
                 detectedRFID = strRfidDetected;
                 rfidMode = RFIDMODE_STARTGAME;
