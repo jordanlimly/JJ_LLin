@@ -147,7 +147,7 @@ namespace MainProj
                 //check if light sensor value goes back to normal values
                 Sleep(300);
                 int checkAdcValue = GetLightValue(lightPin);
-                if (checkAdcValue >= 100)
+                if (checkAdcValue >= 150)
                 {
                     //move to MODE_Exiting
                     curMode = MODE_EXITING;
