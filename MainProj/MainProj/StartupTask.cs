@@ -23,6 +23,7 @@ namespace MainProj
         static int curMode; // stores current mode program is at
         const int RFIDMODE_NORMAL = 4;
         const int RFIDMODE_STARTGAME = 5;
+        const int RFIDMODE_TOPTUP = 6;
         static int rfidMode;
 
         // =====FOR RFID=====
@@ -213,6 +214,13 @@ namespace MainProj
 
         private void handleRfidModeNormal()
         {
+            if (strDataReceived.Equals("RFIDTOPUP"))
+            {
+                strDataReceived = "";
+                rfidMode = RFIDMODE_TOPTUP;
+                Debug.WriteLine("===Entering RFIDMODE_TOPUP===");
+            }
+
             if (!strRfidDetected.Equals(""))  // this is true for any card detected      **6A003E1A3E70  **6A003E6199AC
             {
                 detectedRFID = strRfidDetected;
@@ -231,6 +239,26 @@ namespace MainProj
 
             rfidMode = RFIDMODE_NORMAL;
             Debug.WriteLine("===Back to RFIDMODE_Normal===");
+        }
+
+
+        private void handleRfidModeTopup()
+        {
+            if (!strRfidDetected.Equals(""))
+            {
+                detectedRFID = strRfidDetected;
+                Debug.WriteLine("rfid detected for topup is" + detectedRFID);
+                sendDataToWindows("RFIDTOPUPSTR=" + detectedRFID);
+            }
+
+            if (strDataReceived.Equals("RFIDRETURNNORM"))
+            {
+                strDataReceived = "";
+                rfidMode = RFIDMODE_NORMAL;
+                Debug.WriteLine("===Back to RFIDMODE_Normal===");
+            }
+
+            strRfidDetected = "";
         }
 
         public void Run(IBackgroundTaskInstance taskInstance)
@@ -292,6 +320,8 @@ namespace MainProj
                     handleRfidModeNormal();
                 else if (rfidMode == RFIDMODE_STARTGAME)
                     handleRfidModeStartGame();
+                else if (rfidMode == RFIDMODE_TOPTUP)
+                    handleRfidModeTopup();
                 else
                     Debug.WriteLine("Error: Invalid mode, check logic");
 
