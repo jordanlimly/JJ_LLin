@@ -20,6 +20,8 @@ namespace MainProj
         const int MODE_NORMAL = 1;
         const int MODE_ENTERING = 2;
         const int MODE_EXITING = 3;
+        const int MODE_ENTERING_LIGHTLOW = 7;
+        const int MODE_EXITING_LIGHTLOW = 8;
         static int curMode; // stores current mode program is at
         const int RFIDMODE_NORMAL = 4;
         const int RFIDMODE_STARTGAME = 5;
@@ -146,66 +148,135 @@ namespace MainProj
             else if (adcValue < 50)
             {
                 //check if light sensor value goes back to normal values
-                Sleep(300);
-                int checkAdcValue = GetLightValue(lightPin);
-                if (checkAdcValue >= 150)
-                {
-                    //move to MODE_Exiting
-                    curMode = MODE_EXITING;
-                    Debug.WriteLine("===Entering MODE_EXITING===");
-                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
-                }
+                //Sleep(300);
+                //int checkAdcValue = GetLightValue(lightPin);
+                //if (checkAdcValue >= 150)
+                //{
+                //    //move to MODE_Exiting
+                //    curMode = MODE_EXITING;
+                //    Debug.WriteLine("===Entering MODE_EXITING===");
+                //    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+                //}
+                curMode = MODE_EXITING_LIGHTLOW;
+                Debug.WriteLine("===Entering MODE_EXITING_LIGHTLOW===");
             }
         }
 
+        string curDT = "";
+        string endDT = "";
         private void handleModeEntering()
         {
             //string startTime = DateTime.Now.ToString("ss");
-            adcValue = GetLightValue(lightPin);
-            if (adcValue < 50)
+            //adcValue = GetLightValue(lightPin);
+            if (curDT == "" || endDT == "")
             {
-                Sleep(300);
-                int checkAdcValue = GetLightValue(lightPin);
-                if (checkAdcValue > 150)
-                {
-                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
-                    string direction = "In";
-                    sendDataToWindows("DIRECTION=" + direction);
-                    Debug.WriteLine("Someone entered");
-
-                    curMode = MODE_NORMAL;
-                    Debug.WriteLine("===Back to MODE_Normal===");
-                }
-                //else
-                //{
-                //    // this part not confirmed yet
-                //    curMode = MODE_NORMAL;
-                //    Debug.WriteLine("===Enter cancelled, back to MODE_Normal===");
-                //}
+                curDT = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+                endDT = DateTime.Now.AddSeconds(5).ToString("dd/MM/yyyy HH:mm:ss");
             }
+            
+            if ((DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")) != endDT)
+            {
+                if (adcValue < 50)
+                {
+                    curDT = "";
+                    endDT = "";
+                    curMode = MODE_ENTERING_LIGHTLOW;
+                    Debug.WriteLine("===Entering MODE_ENTERING_LIGHTLOW===");
+                    //Sleep(300);
+                    //int checkAdcValue = GetLightValue(lightPin);
+                    //if (checkAdcValue > 150)
+                    //{
+                    //    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+                    //    string direction = "In";
+                    //    sendDataToWindows("DIRECTION=" + direction);
+                    //    Debug.WriteLine("Someone entered");
+
+                    //    curMode = MODE_NORMAL;
+                    //    Debug.WriteLine("===Back to MODE_Normal===");
+                    //}
+
+                    //else
+                    //{
+                    //    // this part not confirmed yet
+                    //    curMode = MODE_NORMAL;
+                    //    Debug.WriteLine("===Enter cancelled, back to MODE_Normal===");
+                    //}
+                }
+            }
+            else
+            {
+                curDT = "";
+                endDT = "";
+                sendDataToWindows("CANCELANIMATION=" + "S1");
+                curMode = MODE_NORMAL;
+                Debug.WriteLine("===Back to MODE_Normal===");
+            }
+            
 
         }
 
+        private void handleModeEntering_LightLow(int adcValue)
+        {
+            if (adcValue > 150)
+            {
+                sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+                string direction = "In";
+                sendDataToWindows("DIRECTION=" + direction);
+                Debug.WriteLine("Someone entered");
+
+                curMode = MODE_NORMAL;
+                Debug.WriteLine("===Back to MODE_Normal===");
+            }
+        }
+
+        private void handleModeExiting_LightLow(int adcValue)
+        {
+            if (adcValue >= 150)
+            {
+                //move to MODE_Exiting
+                curMode = MODE_EXITING;
+                Debug.WriteLine("===Entering MODE_EXITING===");
+                sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
+            }
+        }
 
         private void handleModeExiting()
         {
-            sensorDistance = getDistance();
-            if (sensorDistance < 110)
+            if (curDT == "" || endDT == "")
             {
-                //check if dist. sensor value goes back to normal values
-                Sleep(300);
-                int checkDistance = getDistance();
-                if (checkDistance >= 110)
-                {
-                    sendDataToWindows("SENSORTRIGGERED=" + "Sensor1");
-                    string direction = "Out";
-                    sendDataToWindows("DIRECTION=" + direction);
-                    Debug.WriteLine("Someone left");
+                curDT = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+                endDT = DateTime.Now.AddSeconds(5).ToString("dd/MM/yyyy HH:mm:ss");
+            }
 
-                    curMode = MODE_NORMAL;
-                    Debug.WriteLine("===Back to MODE_Normal===");
+            if ((DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")) != endDT)
+            {
+                if (sensorDistance < 110)
+                {
+                    //check if dist. sensor value goes back to normal values
+                    Sleep(300);
+                    int checkDistance = getDistance();
+                    if (checkDistance >= 110)
+                    {
+                        sendDataToWindows("SENSORTRIGGERED=" + "Sensor1");
+                        string direction = "Out";
+                        sendDataToWindows("DIRECTION=" + direction);
+                        Debug.WriteLine("Someone left");
+
+                        curDT = "";
+                        endDT = "";
+                        curMode = MODE_NORMAL;
+                        Debug.WriteLine("===Back to MODE_Normal===");
+                    }
                 }
             }
+            else
+            {
+                curDT = "";
+                endDT = "";
+                sendDataToWindows("CANCELANIMATION=" + "S2");
+                curMode = MODE_NORMAL;
+                Debug.WriteLine("===Back to MODE_Normal===");
+            }       
 
         }
 
@@ -303,6 +374,10 @@ namespace MainProj
                     handleModeEntering();
                 else if (curMode == MODE_EXITING)
                     handleModeExiting();
+                else if (curMode == MODE_ENTERING_LIGHTLOW)
+                    handleModeEntering_LightLow(adcValue);
+                else if (curMode == MODE_EXITING_LIGHTLOW)
+                    handleModeExiting_LightLow(adcValue);
                 else
                     Debug.WriteLine("Error: Invalid mode, check logic");
 
