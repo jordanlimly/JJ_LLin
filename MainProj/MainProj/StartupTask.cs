@@ -148,17 +148,20 @@ namespace MainProj
             else if (adcValue < 50)
             {
                 //check if light sensor value goes back to normal values
-                //Sleep(300);
-                //int checkAdcValue = GetLightValue(lightPin);
-                //if (checkAdcValue >= 150)
+                Sleep(10);
+                int checkAdcValue = GetLightValue(lightPin);
+                if (checkAdcValue < 50)
                 //{
                 //    //move to MODE_Exiting
                 //    curMode = MODE_EXITING;
                 //    Debug.WriteLine("===Entering MODE_EXITING===");
                 //    sendDataToWindows("SENSORTRIGGERED=" + "Sensor2");
                 //}
-                curMode = MODE_EXITING_LIGHTLOW;
-                Debug.WriteLine("===Entering MODE_EXITING_LIGHTLOW===");
+                {
+                    curMode = MODE_EXITING_LIGHTLOW;
+                    Debug.WriteLine("===Entering MODE_EXITING_LIGHTLOW===");
+                }
+                
             }
         }
 
